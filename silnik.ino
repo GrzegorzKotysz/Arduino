@@ -25,7 +25,8 @@ boolean   isOn = false; // checks whether engine is on
 # define X_STP_5v 7 //PUL+(+5v) axis stepper motor step control       RED
 
 
-void setup() {// *************************************************************     setup
+void setup()  // **********************************************************    setup
+{
   pinMode (X_ENgnd , OUTPUT); //ENA-(ENA)
   pinMode (X_EN_5v , OUTPUT); //ENA+(+5V)
   pinMode (X_DIRgnd, OUTPUT); //DIR-(DIR)
@@ -43,7 +44,7 @@ void setup() {// *************************************************************  
   Serial.begin(115200);
 }
 
-void serialEvent()// ********************************************************      Serial in
+void serialEvent()  // ****************************************************    serialEvent
 { while (Serial.available())  // automatically exits loop when buffer was read
   {
     char inChar = (char)Serial.read();            // get the new byte:
@@ -57,12 +58,41 @@ void serialEvent()// ********************************************************   
 }
 
 // cleaningService() sets inputString to empty string and resets stringComplete to false
-void cleaningService() // *******************************************  cleaningService()
+void cleaningService()  // ************************************************    cleaningService()
 {
   inputString = ""; stringComplete = false;
 }
 
-void printNewPosition() { // **************************************************     printNewPosition
+// template for printing floats
+template <typename number>
+void printFloat(number decimal, int decimalPlaces = 4)  // ****************    printFloat
+{
+  int h; //helper
+  h = (int)decimal; // type conversion (holds integral part)
+  Serial.print(h);
+  Serial.print(".");
+  decimal -= h; // decimal = 0. ... (holds fractional part)
+  for(int i=0; i < decimalPlaces; ++i)
+  {
+    decimal *= 10; // shift numbers to the left (base10)
+    h = (int)decimal; // take integral part
+    Serial.print(h); // print integral part
+    decimal -= h; // remove integral part
+  }
+}
+
+// prints c as float but with given precision
+void customPrintC()  // ***************************************************    customPrintC
+{
+  inputString = inputString.substring(6); // removes 'printc' from inputString
+  Serial.print("c = ");
+  printFloat(c, inputString.toInt()); // prints c to given decimal place
+  Serial.println(); // ends line
+  inputString = "";
+}
+
+void printNewPosition()  // ***********************************************    printNewPosition
+{
   Serial.print("nx=");
   Serial.print(nx);
   Serial.print(" mm,  ");
@@ -70,7 +100,8 @@ void printNewPosition() { // ************************************************** 
   Serial.println(nxi);
 }
 
-void printPosition() { // *****************************************************     printPosition
+void printPosition()  // **************************************************    printPosition
+{
   Serial.print("x=");
   Serial.print(x);
   Serial.print(" mm,  ");
@@ -78,50 +109,56 @@ void printPosition() { // ***************************************************** 
   Serial.println(xi);
 }
 
-void help() { // **************************************************************   help
+void help()  // ***********************************************************    help
+{
   Serial.println("Commands step by step guide");
-  Serial.println("Type hello -sends TB6600 Tester Ready ");
-  Serial.println("Type pos - prints actual position");
-  Serial.println("Type newPos - prints desired position");
-  Serial.println("Type printc - prints calibration factor");
-  Serial.println("Type on  -turns TB6600 on");
-  Serial.println("Type x+Number eg x1904 -to set next move position [mm]");
-  Serial.println("Type xi+Number(-2^31, 2^31) eg x1904 -to set next move position [steps]");
-  Serial.println("Type dx+Number eg x1904 -to set delta position [mm]");
-  Serial.println("Type dxi+Number(-2^31, 2^31) eg x1904 -to set delta position [steps]");
-  Serial.println("Type m -to make motor move to the next position");
-  Serial.println("Type sec+Numer eg c1.02 to set new calibration factor");
-  Serial.println("Type setx+Number eg setx100 to set new position [mm]");
-  Serial.println("Type setxi+Number eg setxi100 to set new position [steps]");
-  Serial.println("Type cdon -turns on postion data when moving will increase time of step");
-  Serial.println("Type s+Number(0-2000) eg s500 -to set Microseconds between steps");
-  Serial.println("Type off -turns TB6600 off");
-  Serial.println("Type cdoff -turns off postion data when moving");
-  Serial.println("Type calibrate to start calibration program");
+  Serial.println("hello      - sends TB6600 Tester Ready ");
+  Serial.println("pos        - prints actual position");
+  Serial.println("newPos     - prints desired position");
+  Serial.println("printc     - prints calibration factor");
+  Serial.println("printc+n   - prints calibration factor with given precision");
+  Serial.println("on         - turns TB6600 on");
+  Serial.println("x+n        - sets next move position [mm]");
+  Serial.println("xi+n       - sets next move position [steps]");
+  Serial.println("dx+n       - sets delta position [mm]");
+  Serial.println("dxi+n      - sets delta position [steps]");
+  Serial.println("m          - motor moves to the next position");
+  Serial.println("setc+n     - sets new calibration factor");
+  Serial.println("setx+n     - sets new position [mm]");
+  Serial.println("setxi+n    - sets new position [steps]");
+  Serial.println("cdon       - turns on postion data when moving (will increase time of step)");
+  Serial.println("s+n        - sets Microseconds between steps");
+  Serial.println("off        - turns TB6600 off");
+  Serial.println("cdoff      - turns off postion data when moving");
+  Serial.println("calibrate  - starts calibration procedure");
 
   inputString = ""; // resets inputString
 }
 
-void hello() { // **************************************************************   hello
+void hello()  // **********************************************************    hello
+{
   Serial.println("TB6600 Tester Ready");
   inputString = "";
 }
 
-void ENAXON() { // *************************************************************   ENAXON
+void ENAXON()  // *********************************************************    ENAXON
+{
   isOn = true;
   Serial.println("ENAXON");
   digitalWrite (X_EN_5v, LOW);//ENA+(+5V) low=enabled
   inputString = "";
 }
 
-void ENAXOFF() { // ***********************************************************   ENAXOFF
+void ENAXOFF()  // ********************************************************    ENAXOFF
+{
   isOn = false;
   Serial.println("ENAXOFF");
   digitalWrite (X_EN_5v, HIGH);//ENA+(+5V) low=enabled
   inputString = "";
 }
 
-void MSpeed() { // ************************************************************   MSpeed
+void MSpeed()  // *********************************************************    MSpeed
+{
   inputString = inputString.substring(1); // removes 's' from inputString
   moveSpeed = inputString.toInt(); // changes inputString to integer
   Serial.print("Speed=");
@@ -129,19 +166,22 @@ void MSpeed() { // ************************************************************ 
   inputString = "";
 }
 
-void comDataON() { // *********************************************************   comDataON
+void comDataON()  // ******************************************************    comDataON
+{
   comData = true;
   Serial.println("comDataOn");
   inputString = "";
 }
 
-void comDataOFF() { // ********************************************************   comDataOFF
+void comDataOFF()  // *****************************************************    comDataOFF
+{
   comData = false;
   Serial.println("comDataOFF");
   inputString = "";
 }
 
-void nextXi() { // **************************************************************    nextXi
+void nextXi()  // *********************************************************    nextXi
+{
   inputString = inputString.substring(2);
   nxi = inputString.toInt();
   dxi = nxi - xi;
@@ -151,7 +191,8 @@ void nextXi() { // *************************************************************
   inputString = "";
 }
 
-void nextX() { // **************************************************************    nextX
+void nextX()  // **********************************************************    nextX
+{
   inputString = inputString.substring(1);
   nx = inputString.toFloat();
   dx = nx - x;
@@ -161,7 +202,8 @@ void nextX() { // **************************************************************
   inputString = "";
 }
 
-void nextDxi() { // **************************************************************    nextDxi
+void nextDxi()  // ********************************************************    nextDxi
+{
   inputString = inputString.substring(3);
   dxi = inputString.toInt();
   dx = c * dxi;
@@ -171,7 +213,8 @@ void nextDxi() { // ************************************************************
   inputString = "";
 }
 
-void nextDx() { // **************************************************************    nextDx
+void nextDx()  // *********************************************************    nextDx
+{
   inputString = inputString.substring(2);
   dx = inputString.toFloat();
   dxi = dx/c;
@@ -181,7 +224,8 @@ void nextDx() { // *************************************************************
   inputString = "";
 }
 
-void moveDef() { // **************************************************************    moveDef
+void moveDef()  // ********************************************************    moveDef
+{
   if (isOn == true)
   {
   int dir; // identifies direction of movement
@@ -227,32 +271,37 @@ void moveDef() { // ************************************************************
   }
 }
 
-void setXi() { // ************************************************************     setXi
+void setXi()  // **********************************************************    setXi
+{
   inputString = inputString.substring(5);
   xi = inputString.toInt();
   printPosition();
   inputString = "";
 }
 
-void setX() { // ************************************************************     setX
+void setX()  // ***********************************************************    setX
+{
   inputString = inputString.substring(4);
   x = inputString.toInt();
   printPosition();
   inputString = "";
 }
 
-void setC() { // ************************************************************     setC
+void setC()  // ***********************************************************    setC
+{
   inputString = inputString.substring(4);
-  c = inputString.toInt();
+  c = inputString.toFloat();
   Serial.print("c = ");
-  Serial.println(c);
+  printFloat(c);
+  Serial.println();
   inputString = "";
 }
 
-void calibration() { // ******************************************************    calibration
+void calibration()  // ****************************************************    calibration
+{
   calibrationMode = true;
   cleaningService();
-  Serial.println("Provide number of steps for the calibration process");
+  Serial.println("specify number of steps for the calibration process");
   do
   {
       serialEvent();
@@ -262,7 +311,7 @@ void calibration() { // ******************************************************  
   Serial.println(dxi);
   nxi = xi + dxi;
   cleaningService();
-  Serial.println("Provide actual position [mm] of the reference point");
+  Serial.println("specify actual position [mm] of the reference point");
   do
   {
       serialEvent();
@@ -275,7 +324,7 @@ void calibration() { // ******************************************************  
     ENAXON();}
   delay(5000);
   moveDef();
-  Serial.println("Provide actual position [mm] of the reference point");
+  Serial.println("specify actual position [mm] of the reference point");
   do
   {
       serialEvent();
@@ -286,39 +335,40 @@ void calibration() { // ******************************************************  
   printPosition();
   cleaningService();
   c = dx/dxi;
-  Serial.print("Calibration completed: c = ");
-  Serial.println(c);
+  Serial.print("calibration completed: c = ");
+  printFloat(c);
+  Serial.println();
   calibrationMode = false;
 }
 
-void loop()  // **************************************************************     loop
+void loop()  // ***********************************************************    loop
 {
   serialEvent();
   if (stringComplete)
   {
-    if (inputString == "help\n")      {help();}
-    if (inputString == "hello\n")     {hello();}
-    if (inputString == "on\n")       {ENAXON();}
-    if (inputString == "off\n")      {ENAXOFF();}
-    if (inputString == "cdon\n")      {comDataON();}
-    if (inputString == "cdoff\n")     {comDataOFF();}
-    if (inputString == "m\n")        {moveDef();}
-    if (inputString == "calibrate\n") {calibration();}
-    if (inputString == "printc\n") {Serial.print("c = "); Serial.println(c); inputString="";}
-    if (inputString == "pos\n")  {printPosition(); inputString = "";}
-    if (inputString == "newPos\n") {printNewPosition(); inputString = "";}
+    if (inputString == "help\n")         {help();}
+    if (inputString == "hello\n")        {hello();}
+    if (inputString == "on\n")           {ENAXON();}
+    if (inputString == "off\n")          {ENAXOFF();}
+    if (inputString == "cdon\n")         {comDataON();}
+    if (inputString == "cdoff\n")        {comDataOFF();}
+    if (inputString == "m\n")            {moveDef();}
+    if (inputString == "calibrate\n")    {calibration();}
+    if (inputString == "printc\n")       {Serial.print("c = "); printFloat(c); Serial.println(); inputString="";}
+    if (inputString == "pos\n")          {printPosition(); inputString = "";}
+    if (inputString == "newPos\n")       {printNewPosition(); inputString = "";}
+    if (inputString.startsWith("printc")){customPrintC();}
     if (inputString.startsWith("setxi")) {setXi();}
-    if (inputString.startsWith("setx")) {setX();}
-    if (inputString.startsWith("setc")) {setC();}
-    if (inputString.startsWith("dxi")) {nextDxi();}
-    if (inputString.startsWith("dx")) {nextDx();}
-    if (inputString.startsWith("xi"))   {nextXi();}
-    if (inputString.charAt(0) == 's')   {MSpeed();}
-    if (inputString.charAt(0) == 'x') {nextX();}
+    if (inputString.startsWith("setx"))  {setX();}
+    if (inputString.startsWith("setc"))  {setC();}
+    if (inputString.startsWith("dxi"))   {nextDxi();}
+    if (inputString.startsWith("dx"))    {nextDx();}
+    if (inputString.startsWith("xi"))    {nextXi();}
+    if (inputString.charAt(0) == 's')    {MSpeed();}
+    if (inputString.charAt(0) == 'x')    {nextX();}
 
-    if (inputString != "") {
-      Serial.println("BAD COMMAND=" + inputString); // "\t" tab
-    }// Serial.print("\n"); }
-    cleaningService(); // clear the string:
+    if (inputString != "") 
+    { Serial.println("BAD COMMAND=" + inputString);    }
+    cleaningService(); // clear the string and reset stringComplete
   }
 }
