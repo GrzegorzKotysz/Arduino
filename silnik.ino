@@ -94,19 +94,21 @@ void customPrintC()  // ***************************************************    c
 void printNewPosition()  // ***********************************************    printNewPosition
 {
   Serial.print("nx=");
-  Serial.print(nx);
+  printFloat(nx, 2);
   Serial.print(" mm,  ");
   Serial.print("nxi=");
-  Serial.println(nxi);
+  printFloat(nxi, 2);
+  Serial.println();
 }
 
 void printPosition()  // **************************************************    printPosition
 {
   Serial.print("x=");
-  Serial.print(x);
+  printFloat(x, 2);
   Serial.print(" mm,  ");
   Serial.print("xi=");
-  Serial.println(xi);
+  printFloat(xi, 2);
+  Serial.println();
 }
 
 void help()  // ***********************************************************    help
@@ -282,7 +284,7 @@ void setXi()  // **********************************************************    s
 void setX()  // ***********************************************************    setX
 {
   inputString = inputString.substring(4);
-  x = inputString.toInt();
+  x = inputString.toFloat();
   printPosition();
   inputString = "";
 }
@@ -316,7 +318,7 @@ void calibration()  // ****************************************************    c
   {
       serialEvent();
   } while(stringComplete == false);
-  x = inputString.toInt();
+  x = inputString.toFloat();
   cleaningService();
   Serial.println("Caution! Engine will start in 5 seconds...");
   if (isOn == false) // check whether engine is turned on
@@ -329,14 +331,14 @@ void calibration()  // ****************************************************    c
   {
       serialEvent();
   } while(stringComplete == false);
-  nx = inputString.toInt();
+  nx = inputString.toFloat();
   dx = nx - x;
   x = nx;
   printPosition();
   cleaningService();
   c = dx/dxi;
   Serial.print("calibration completed: c = ");
-  printFloat(c);
+  printFloat(c, 5);
   Serial.println();
   calibrationMode = false;
 }
