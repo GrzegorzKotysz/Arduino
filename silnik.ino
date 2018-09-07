@@ -2,6 +2,36 @@
 // CNC Single Axis 4A TB6600 Stepper Motor Driver Controller
 // use Serial Monitor to control 115200 baud
 
+// enable storage of calibration data
+// http://playground.arduino.cc/Code/EEPROMWriteAnything
+
+#include <EEPROM.h>
+template <class T> int EEPROM_writeAnything(int ee, const T& value)
+{
+    const byte* p = (const byte*)(const void*)&value;
+    unsigned int i;
+    for (i = 0; i < sizeof(value); i++)
+          EEPROM.write(ee++, *p++);
+    return i;
+}
+
+template <class T> int EEPROM_readAnything(int ee, T& value)
+{
+    byte* p = (byte*)(void*)&value;
+    unsigned int i;
+    for (i = 0; i < sizeof(value); i++)
+          *p++ = EEPROM.read(ee++);
+    return i;
+}
+
+// struct for storing calibration data
+struct calib_struct
+{
+  long xi;
+  float x;
+  float c;
+} calib_data;
+
 // long to enable greater range of movement
 long  xi=0; // stores current position in steps
 long nxi; // stores new position in steps
@@ -16,6 +46,22 @@ boolean stringComplete = true;     // whether the string is completed
 boolean        comData = false;    // whether com data is on when motors are moving will slow them down
 boolean   calibrationMode = false; // checks whether program is run in calibration mode
 boolean   isOn = false; // checks whether engine is on
+
+
+// functions for accessing and altering calib_data
+void getCalib_data()
+{
+  xi = calib_data.xi;
+  x = calib_data.x;
+  c = calib_data.c;
+}
+
+void setCalib_data()
+{
+  calib_data.xi = xi;
+  calib_data.x = x;
+  calib_data.c = c;
+}
 
 # define X_ENgnd  2 //ENA-(ENA) stepper motor enable , active low     Gray 
 # define X_EN_5v  3 //ENA+(+5V) stepper motor enable , active low     Orange
@@ -41,6 +87,10 @@ void setup()  // **********************************************************    s
   digitalWrite (X_STPgnd, LOW); //PUL-(PUL)
   digitalWrite (X_STP_5v, LOW); //PUL+(+5v)
 
+  // getting calibration data from ROM
+  EEPROM_readAnything(0, calib_data);
+  getCalib_data();
+  
   Serial.begin(115200);
 }
 
@@ -265,6 +315,8 @@ void moveDef()  // ********************************************************    m
   {
     x = nx;
     printPosition();
+    setCalib_data();
+    EEPROM_writeAnything(0, calib_data);
   }
   inputString = "";
   } else {
@@ -278,6 +330,8 @@ void setXi()  // **********************************************************    s
   inputString = inputString.substring(5);
   xi = inputString.toInt();
   printPosition();
+  setCalib_data();
+  EEPROM_writeAnything(0, calib_data);
   inputString = "";
 }
 
@@ -286,6 +340,8 @@ void setX()  // ***********************************************************    s
   inputString = inputString.substring(4);
   x = inputString.toFloat();
   printPosition();
+  setCalib_data();
+  EEPROM_writeAnything(0, calib_data);
   inputString = "";
 }
 
@@ -296,6 +352,8 @@ void setC()  // ***********************************************************    s
   Serial.print("c = ");
   printFloat(c);
   Serial.println();
+  setCalib_data();
+  EEPROM_writeAnything(0, calib_data);
   inputString = "";
 }
 
@@ -340,6 +398,8 @@ void calibration()  // ****************************************************    c
   Serial.print("calibration completed: c = ");
   printFloat(c, 5);
   Serial.println();
+  setCalib_data();
+  EEPROM_writeAnything(0, calib_data);
   calibrationMode = false;
 }
 
