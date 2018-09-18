@@ -121,6 +121,8 @@ void printFloat(number decimal, int decimalPlaces = 4)  // ****************    p
   h = (int)decimal; // type conversion (holds integral part)
   Serial.print(h);
   Serial.print(".");
+  h = abs(h); // needed for proper display of negative numbers
+  decimal = abs(decimal); 
   decimal -= h; // decimal = 0. ... (holds fractional part)
   for(int i=0; i < decimalPlaces; ++i)
   {
