@@ -117,8 +117,8 @@ void cleaningService()  // ************************************************    c
 template <typename number>
 void printFloat(number decimal, int decimalPlaces = 4)  // ****************    printFloat
 {
-  int h; //helper
-  h = (int)decimal; // type conversion (holds integral part)
+  long h; //helper
+  h = (long)decimal; // type conversion (holds integral part)
   Serial.print(h);
   Serial.print(".");
   h = abs(h); // needed for proper display of negative numbers
@@ -127,7 +127,7 @@ void printFloat(number decimal, int decimalPlaces = 4)  // ****************    p
   for(int i=0; i < decimalPlaces; ++i)
   {
     decimal *= 10; // shift numbers to the left (base10)
-    h = (int)decimal; // take integral part
+    h = (long)decimal; // take integral part
     Serial.print(h); // print integral part
     decimal -= h; // remove integral part
   }
@@ -145,21 +145,21 @@ void customPrintC()  // ***************************************************    c
 
 void printNewPosition()  // ***********************************************    printNewPosition
 {
-  Serial.print("nx=");
+  Serial.print("nx = ");
   printFloat(nx, 2);
   Serial.print(" mm,  ");
-  Serial.print("nxi=");
-  printFloat(nxi, 2);
+  Serial.print("nxi = ");
+  Serial.print(nxi);
   Serial.println();
 }
 
 void printPosition()  // **************************************************    printPosition
 {
-  Serial.print("x=");
+  Serial.print("x = ");
   printFloat(x, 2);
   Serial.print(" mm,  ");
-  Serial.print("xi=");
-  printFloat(xi, 2);
+  Serial.print("xi = ");
+  Serial.print(xi);
   Serial.println();
 }
 
@@ -418,7 +418,7 @@ void loop()  // ***********************************************************    l
     if (inputString == "cdoff\n")        {comDataOFF();}
     if (inputString == "m\n")            {moveDef();}
     if (inputString == "calibrate\n")    {calibration();}
-    if (inputString == "printc\n")       {Serial.print("c = "); printFloat(c); Serial.println(); inputString="";}
+    if (inputString == "printc\n")       {Serial.print("c="); printFloat(c); Serial.println(); inputString="";}
     if (inputString == "pos\n")          {printPosition(); inputString = "";}
     if (inputString == "newPos\n")       {printNewPosition(); inputString = "";}
     if (inputString.startsWith("printc")){customPrintC();}
