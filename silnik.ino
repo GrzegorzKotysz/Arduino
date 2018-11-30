@@ -46,8 +46,9 @@ boolean stringComplete = true;     // whether the string is completed
 boolean        comData = false;    // whether com data is on when motors are moving will slow them down
 boolean   calibrationMode = false; // checks whether program is run in calibration mode
 boolean   isOn = false; // checks whether engine is on
-
-
+boolean   autoModeOn = false; // whether program is in auto mode
+float step = 0;
+ 
 // functions for accessing and altering calib_data
 void getCalib_data()
 {
@@ -185,6 +186,13 @@ void help()  // ***********************************************************    h
   Serial.println("off        - turns TB6600 off");
   Serial.println("cdoff      - turns off postion data when moving");
   Serial.println("calibrate  - starts calibration procedure");
+  Serial.println("--------------------------------------------------------------------------------");
+  Serial.println("AUTO MODE:");
+  Serial.println("--------------------------------------------------------------------------------");
+  Serial.println("autoOn     - starts auto mode");
+  Serial.println("autoOff    - stops auto mode");
+  Serial.println("step+n     - AM: sets step in [mm] for next move");
+  Serial.println("w / s      - AM: increase distance / decrease distance");
 
   inputString = ""; // resets inputString
 }
@@ -405,11 +413,81 @@ void calibration()  // ****************************************************    c
   calibrationMode = false;
 }
 
+// set of functions for auto-mode
+void printStep()
+{
+  Serial.print("step = ");
+  printFloat(step, 2);
+  Serial.print(" mm");
+  Serial.println();
+}
+
+void autoMode(boolean autoSwitch)  // *************************************    autoMode
+{
+    if (autoSwitch == true & autoModeOn == false)
+    {
+        Serial.println("Starting Auto Mode");
+        ENAXON();
+        if (step == 0)
+        {
+            Serial.println("Specify desired auto step in [mm]:");
+            do
+            {
+                serialEvent();
+            } while(stringComplete == false);
+            step = inputString.toFloat();
+            cleaningService();
+        }
+        printStep();
+        autoModeOn = true;
+        Serial.println("Ready");
+    } else if (autoSwitch == true & autoModeOn == true)
+    {
+        Serial.println("Already in Auto Mode");
+    } else if (autoSwitch == false & autoModeOn == true)
+    {
+        Serial.println("Disabling Auto Mode");
+        ENAXOFF();
+        autoModeOn = false;
+        Serial.println("Ready");
+    } else if (autoSwitch == false & autoMode == false)
+    {
+        Serial.println("Auto Mode inactive");
+    }
+}
+
+void setStep() // *********************************************************    setStep
+{
+  inputString = inputString.substring(4);
+  step = inputString.toFloat();
+  printStep();
+  inputString = "";
+}
+
+void autoMove(float s, int dir)  // ***************************************    autoMove
+{
+  switch (dir) {
+      case 0:
+          dx = -s; break;
+      case 1:
+          dx = s; break;
+  }
+  dxi = dx/c;
+  nxi = xi + dxi;
+  nx = x + dx;
+  moveDef();
+}
+
+
 void loop()  // ***********************************************************    loop
 {
   serialEvent();
   if (stringComplete)
   {
+    if (inputString == "w\n")            {autoMove(step, 1);}
+    if (inputString == "s\n")            {autoMove(step, 0);}
+    if (inputString == "autoOn\n")       {autoMode(true);}
+    if (inputString == "autoOff\n")      {autoMode(false);}
     if (inputString == "help\n")         {help();}
     if (inputString == "hello\n")        {hello();}
     if (inputString == "on\n")           {ENAXON();}
@@ -421,6 +499,7 @@ void loop()  // ***********************************************************    l
     if (inputString == "printc\n")       {Serial.print("c="); printFloat(c); Serial.println(); inputString="";}
     if (inputString == "pos\n")          {printPosition(); inputString = "";}
     if (inputString == "newPos\n")       {printNewPosition(); inputString = "";}
+    if (inputString.startsWith("step"))  {setStep();}
     if (inputString.startsWith("printc")){customPrintC();}
     if (inputString.startsWith("setxi")) {setXi();}
     if (inputString.startsWith("setx"))  {setX();}
