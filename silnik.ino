@@ -193,6 +193,7 @@ void help()  // ***********************************************************    h
   Serial.println("autoOff    - stops auto mode");
   Serial.println("step+n     - AM: sets step in [mm] for next move");
   Serial.println("w / s      - AM: increase distance / decrease distance");
+  Serial.println("--------------------------------------------------------------------------------");
 
   inputString = ""; // resets inputString
 }
@@ -424,6 +425,7 @@ void printStep()
 
 void autoMode(boolean autoSwitch)  // *************************************    autoMode
 {
+  cleaningService();
     if (autoSwitch == true & autoModeOn == false)
     {
         Serial.println("Starting Auto Mode");
@@ -466,6 +468,12 @@ void setStep() // *********************************************************    s
 
 void autoMove(float s, int dir)  // ***************************************    autoMove
 {
+  if (autoModeOn == false)
+  {
+    Serial.println("Auto Mode is OFF!");
+    inputString = "";
+  }
+  else {
   switch (dir) {
       case 0:
           dx = -s; break;
@@ -475,7 +483,7 @@ void autoMove(float s, int dir)  // ***************************************    a
   dxi = dx/c;
   nxi = xi + dxi;
   nx = x + dx;
-  moveDef();
+  moveDef(); }
 }
 
 
