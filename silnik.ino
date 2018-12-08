@@ -4,26 +4,27 @@
 
 #include "DHT.h" // biblioteka DHT (Adafruit_Sensor.h)
 
+
 // enable storage of calibration data
 // http://playground.arduino.cc/Code/EEPROMWriteAnything
 
 #include <EEPROM.h>
 template <class T> int EEPROM_writeAnything(int ee, const T& value)
 {
-    const byte* p = (const byte*)(const void*)&value;
-    unsigned int i;
-    for (i = 0; i < sizeof(value); i++)
-          EEPROM.write(ee++, *p++);
-    return i;
+  const byte* p = (const byte*)(const void*)&value;
+  unsigned int i;
+  for (i = 0; i < sizeof(value); i++)
+    EEPROM.write(ee++, *p++);
+  return i;
 }
 
 template <class T> int EEPROM_readAnything(int ee, T& value)
 {
-    byte* p = (byte*)(void*)&value;
-    unsigned int i;
-    for (i = 0; i < sizeof(value); i++)
-          *p++ = EEPROM.read(ee++);
-    return i;
+  byte* p = (byte*)(void*)&value;
+  unsigned int i;
+  for (i = 0; i < sizeof(value); i++)
+    *p++ = EEPROM.read(ee++);
+  return i;
 }
 
 // struct for storing calibration data
@@ -35,24 +36,31 @@ struct calib_struct
 } calib_data;
 
 // long to enable greater range of movement
-long  xi=0; // stores current position in steps
-long nxi; // stores new position in steps
-long dxi; // stores delta position in steps
-float x=0;   // stores current position in mm
-float nx;  // stores new position in mm
-float dx;  // stores delta position in mm
-float c=1;   // stores calibration data (c = dx/dxi)
+long xi = 0; // stores current position in steps
+long nxi;    // stores new position in steps
+long dxi;    // stores delta position in steps
+
+float x = 0;  // stores current position in mm
+float nx;     // stores new position in mm
+float dx;     // stores delta position in mm
+float c = 1;  // stores calibration data (c = dx/dxi)
+float step = 0; // stores step value in mm for autoMode
+
 int moveSpeed = 600; //step in Microseconds
-String     inputString = "help\n"; // a string to hold incoming data
+
+String inputString = "help\n";  // a string to hold incoming data
+
 boolean stringComplete = true;     // whether the string is completed
-boolean        comData = false;    // whether com data is on when motors are moving will slow them down
-boolean   calibrationMode = false; // checks whether program is run in calibration mode
-boolean   isOn = false; // checks whether engine is on
-boolean   autoModeOn = false; // whether program is in auto mode
-float step = 0;
+boolean comData = false;           // whether com data is on when motors are moving will slow them down
+boolean calibrationMode = false;   // checks whether program is run in calibration mode
+boolean isOn = false;              // checks whether engine is on
+boolean autoModeOn = false;        // whether program is in auto mode
+
 unsigned int calib_data_size = sizeof(calib_data); // stores size of the calibration data, so presets for test Mode can be easily stored
 unsigned long elapsedTime = 0; // measures elapsed time from certain flag by using milis() function
-unsigned long startTime = 0;
+unsigned long startTime = 0;  // start time needed for test time calculation
+
+
 // functions for accessing and altering calib_data
 void getCalib_data()
 {
@@ -68,6 +76,7 @@ void setCalib_data()
   calib_data.c = c;
 }
 
+
 # define X_ENgnd  2 //ENA-(ENA) stepper motor enable , active low     Gray 
 # define X_EN_5v  3 //ENA+(+5V) stepper motor enable , active low     Orange
 # define X_DIRgnd 4 //DIR-(DIR) axis stepper motor direction control  Blue
@@ -78,6 +87,7 @@ void setCalib_data()
 # define DHTPIN 8          // numer pinu sygnałowego
 # define DHTTYPE DHT11     // typ czujnika (DHT11). Jesli posiadamy DHT22 wybieramy DHT22
 DHT dht(DHTPIN, DHTTYPE); // definicja czujnika
+
 
 void setup()  // **********************************************************    setup
 {
@@ -103,6 +113,7 @@ void setup()  // **********************************************************    s
   Serial.begin(115200);
 }
 
+
 void serialEvent()  // ****************************************************    serialEvent
 { while (Serial.available())  // automatically exits loop when buffer was read
   {
@@ -116,49 +127,6 @@ void serialEvent()  // ****************************************************    s
   }
 }
 
-void printHumAndTemp()  // ************************************************    printHumAndTemp
-{
-
-  float temp = dht.readTemperature();
-  float hum = dht.readHumidity();
-  // Sprawdzamy czy są odczytane wartości
-  if (isnan(temp) || isnan(hum))
-  {
-    // Jeśli nie, wyświetlamy informację o błędzie
-    Serial.println("Blad odczytu danych z czujnika");
-  } else
-  {
-    // Jeśli tak, wyświetlamy wyniki pomiaru
-    Serial.print("Wilgotnosc: ");
-    Serial.print(hum);
-    Serial.print(" % ");
-    Serial.print("Temperatura: ");
-    Serial.print(temp);
-    Serial.println(" *C");
-  }
-}
-
-boolean emergencyStop()  // ***********************************************    emergencyStop()
-{
-  char inChar = (char)Serial.read();
-  if (inChar == '\n')
-  {
-    Serial.println("------------------");
-    Serial.println("| EMERGENCY STOP |");
-    Serial.println("------------------");
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-// cleaningService() sets inputString to empty string and resets stringComplete to false
-void cleaningService()  // ************************************************    cleaningService()
-{
-  inputString = ""; stringComplete = false;
-}
 
 // template for printing floats
 template <typename number>
@@ -180,14 +148,66 @@ void printFloat(number decimal, int decimalPlaces = 4)  // ****************    p
   }
 }
 
+
+void printHumAndTemp()  // ************************************************    printHumAndTemp
+{
+
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+  // Check whether data was read from DHT
+  if (isnan(temp) || isnan(hum))
+  {
+    // If not, print error message
+    Serial.println("ERROR: incorrect reading from DHT");
+  } else
+  {
+    // If yes, show values
+    Serial.print("Humidity: ");
+    printFloat(hum, 1);
+    Serial.print("% ");
+    Serial.print("Temperature: ");
+    printFloat(temp, 1);
+    Serial.print("*C");
+    Serial.print(", test time: ");
+    printFloat(elapsedTimeSeconds(), 1);
+    Serial.println(" s");
+  }
+}
+
+
+boolean emergencyStop()  // ***********************************************    emergencyStop()
+{
+  char inChar = (char)Serial.read();
+  if (inChar == '\n')
+  {
+    Serial.println("------------------");
+    Serial.println("| EMERGENCY STOP |");
+    Serial.println("------------------");
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+
+// cleaningService() sets inputString to empty string and resets stringComplete to false
+void cleaningService()  // ************************************************    cleaningService()
+{
+  inputString = ""; stringComplete = false;
+}
+
+
 // prints c as float but with given precision
-void customPrintC(int var)  // ***************************************************    customPrintC
+void customPrintC(int var)  // ********************************************    customPrintC
 {
   Serial.print("c = ");
   printFloat(c, var); // prints c to given decimal place
   Serial.println(); // ends line
   inputString = "";
 }
+
 
 // convert input string to integer
 int commandToInt(String input, byte comLen)  // ***************************    commandToInt
@@ -196,6 +216,7 @@ int commandToInt(String input, byte comLen)  // ***************************    c
   return input.toInt();
 }
 
+
 // convert input string to float
 float commandToFloat(String input, byte comLen)  // ***********************    commandToFloat
 {
@@ -203,21 +224,23 @@ float commandToFloat(String input, byte comLen)  // ***********************    c
   return input.toFloat();
 }
 
+
 void printNewPosition()  // ***********************************************    printNewPosition
 {
   Serial.print("nx = ");
   printFloat(nx, 2);
   Serial.print(" mm,  ");
   Serial.print("nxi = ");
-  Serial.print(nxi);
-  Serial.println();
+  Serial.println(nxi);
 }
+
 
 float elapsedTimeSeconds()  // ********************************************    elapsedTimeSeconds
 {
   elapsedTime = millis() - startTime;
   return float(elapsedTime)/1000.0;
 }
+
 
 void printPosition()  // **************************************************    printPosition
 {
@@ -228,9 +251,9 @@ void printPosition()  // **************************************************    p
   Serial.print(xi);
   Serial.print(", test time: ");
   printFloat(elapsedTimeSeconds(), 1);
-  Serial.print(" s");
-  Serial.println();
+  Serial.println(" s");
 }
+
 
 void help()  // ***********************************************************    help
 {
@@ -270,95 +293,96 @@ void help()  // ***********************************************************    h
   inputString = ""; // resets inputString
 }
 
+
 void hello()  // **********************************************************    hello
 {
   Serial.println("TB6600 Tester Ready");
-  inputString = "";
 }
+
 
 void ENAXON()  // *********************************************************    ENAXON
 {
   isOn = true;
   Serial.println("ENAXON");
   digitalWrite (X_EN_5v, LOW);//ENA+(+5V) low=enabled
-  inputString = "";
 }
+
 
 void ENAXOFF()  // ********************************************************    ENAXOFF
 {
   isOn = false;
   Serial.println("ENAXOFF");
   digitalWrite (X_EN_5v, HIGH);//ENA+(+5V) low=enabled
-  inputString = "";
 }
 
-void MSpeed(int var)  // *********************************************************    MSpeed
+
+void MSpeed(int var)  // **************************************************    MSpeed
 {
 //  inputString = inputString.substring(1); // removes 's' from inputString
   moveSpeed = var; // changes inputString to integer
   Serial.print("Speed=");
   Serial.println(moveSpeed);
-  inputString = "";
 }
+
 
 void comDataON()  // ******************************************************    comDataON
 {
   comData = true;
   Serial.println("comDataOn");
-  inputString = "";
 }
+
 
 void comDataOFF()  // *****************************************************    comDataOFF
 {
   comData = false;
   Serial.println("comDataOFF");
-  inputString = "";
 }
 
-void nextXi(int var)  // *********************************************************    nextXi
+
+void nextXi(int var)  // **************************************************    nextXi
 {
   nxi = var;
   dxi = nxi - xi;
   dx = c * dxi;
   nx = x + dx;
   printNewPosition();
-  inputString = "";
 }
 
-void nextX(float var)  // **********************************************************    nextX
+
+void nextX(float var)  // *************************************************    nextX
 {
   nx = var;
   dx = nx - x;
   dxi = dx/c;
   nxi = xi + dxi;
   printNewPosition();
-  inputString = "";
 }
 
-void nextDxi(int var)  // ********************************************************    nextDxi
+
+void nextDxi(int var)  // *************************************************    nextDxi
 {
   dxi = var;
   dx = c * dxi;
   nxi = xi + dxi;
   nx = x + dx;
   printNewPosition();
-  inputString = "";
 }
 
-void nextDx(float var)  // *********************************************************    nextDx
+
+void nextDx(float var)  // ************************************************    nextDx
 {
   dx = var;
   dxi = dx/c;
   nxi = xi + dxi;
   nx = x + dx;
   printNewPosition();
-  inputString = "";
 }
+
 
 void moveDef()  // ********************************************************    moveDef
 {
-  if (isOn == true)
-  {
+if (isOn == true)
+{
   int dir; // identifies direction of movement
   if (nxi > xi)
   {
@@ -413,32 +437,31 @@ void moveDef()  // ********************************************************    m
     setCalib_data();
     EEPROM_writeAnything(0, calib_data);
   }
-  inputString = "";
-  } else {
-    Serial.println("Engine is OFF!");
-    inputString = "";
+} else {
+  Serial.println("Engine is OFF!");
   }
 }
 
-void setXi(int var)  // **********************************************************    setXi
+
+void setXi(int var)  // ***************************************************    setXi
 {
   xi = var;
   printPosition();
   setCalib_data();
   EEPROM_writeAnything(0, calib_data);
-  inputString = "";
 }
 
-void setX(float var)  // ***********************************************************    setX
+
+void setX(float var)  // **************************************************    setX
 {
   x = var;
   printPosition();
   setCalib_data();
   EEPROM_writeAnything(0, calib_data);
-  inputString = "";
 }
 
-void setC(float var)  // ***********************************************************    setC
+
+void setC(float var)  // **************************************************    setC
 {
   c = var;
   Serial.print("c = ");
@@ -446,8 +469,8 @@ void setC(float var)  // *******************************************************
   Serial.println();
   setCalib_data();
   EEPROM_writeAnything(0, calib_data);
-  inputString = "";
 }
+
 
 void calibration()  // ****************************************************    calibration
 {
@@ -456,7 +479,7 @@ void calibration()  // ****************************************************    c
   Serial.println("specify number of steps for the calibration process");
   do
   {
-      serialEvent();
+    serialEvent();
   } while(stringComplete == false);
   dxi = inputString.toInt();
   Serial.print("dxi = ");
@@ -485,7 +508,6 @@ void calibration()  // ****************************************************    c
   dx = nx - x;
   x = nx;
   printPosition();
-  cleaningService();
   c = dx/dxi;
   Serial.print("calibration completed: c = ");
   printFloat(c, 5);
@@ -494,6 +516,7 @@ void calibration()  // ****************************************************    c
   EEPROM_writeAnything(0, calib_data);
   calibrationMode = false;
 }
+
 
 // set of functions for auto-mode
 void printStep()
@@ -504,57 +527,63 @@ void printStep()
   Serial.println();
 }
 
+
 void autoMode(boolean autoSwitch)  // *************************************    autoMode
 {
   cleaningService();
-    if (autoSwitch == true & autoModeOn == false)
+  if (autoSwitch == true & autoModeOn == false)
+  {
+    Serial.println("Starting Auto Mode");
+    ENAXON();
+    if (step == 0)
     {
-        Serial.println("Starting Auto Mode");
-        ENAXON();
-        if (step == 0)
-        {
-            Serial.println("Specify desired auto step in [mm]:");
-            do
-            {
-                serialEvent();
-            } while(stringComplete == false);
-            step = inputString.toFloat();
-            cleaningService();
-        }
-        printStep();
-        autoModeOn = true;
-        Serial.println("Ready");
-    } else if (autoSwitch == true & autoModeOn == true)
-    {
-        Serial.println("Already in Auto Mode");
-    } else if (autoSwitch == false & autoModeOn == true)
-    {
-        Serial.println("Disabling Auto Mode");
-        ENAXOFF();
-        autoModeOn = false;
-        Serial.println("Ready");
-    } else if (autoSwitch == false & autoMode == false)
-    {
-        Serial.println("Auto Mode inactive");
+      Serial.println("Specify desired auto step in [mm]:");
+      do
+      {
+        serialEvent();
+      } while(stringComplete == false);
+      step = inputString.toFloat();
+      cleaningService();
     }
+    printStep();
+    autoModeOn = true;
+    Serial.println("Ready");
+  } 
+  else if (autoSwitch == true & autoModeOn == true)
+  {
+    Serial.println("Already in Auto Mode");
+  } 
+  else if (autoSwitch == false & autoModeOn == true)
+  {
+    Serial.println("Disabling Auto Mode");
+    ENAXOFF();
+    autoModeOn = false;
+    Serial.println("Ready");
+  } 
+  else if (autoSwitch == false & autoMode == false)
+  {
+    Serial.println("Auto Mode inactive");
+  }
+  Serial.println("--------------------------------------------------------------------------------");
 }
 
-void setStep(float var) // *********************************************************    setStep
+
+void setStep(float var) // ************************************************    setStep
 {
   step = var;
   printStep();
-  inputString = "";
 }
+
 
 void autoMove(float s, int dir)  // ***************************************    autoMove
 {
   if (autoModeOn == false)
   {
     Serial.println("Auto Mode is OFF!");
-    inputString = "";
   }
-  else {
-  switch (dir) {
+  else 
+  {
+    switch (dir) {
       case 0:
           dx = -s; break;
       case 1:
@@ -567,8 +596,10 @@ void autoMove(float s, int dir)  // ***************************************    a
   moveDef(); }
 }
 
+
+
+
 // Inner program: Test Mode:
-// Set of functions:
 // struct for preset data and declaration for three presets
 struct presetStruct
 {
@@ -580,6 +611,8 @@ struct presetStruct
 unsigned int presetSize = sizeof(presetA);
 char presetChoice;
 char presetChoiceEEPROM;
+
+// Set of functions:
 
 void tmHelp()  // *********************************************************    tmHelp
 {
@@ -595,25 +628,25 @@ void tmHelp()  // *********************************************************    t
   Serial.println("editPreset   - edit existing preset");
   Serial.println("printPreset  - print selected preset");
   Serial.println("start        - start the test");
-//  Serial.println("end    - end test prematurely (in between tests)");
   Serial.println("--------------------------------------------------------------------------------");
-  Serial.println("on         - turns TB6600 on");
-  Serial.println("x+n        - sets next move position [mm]");
-  Serial.println("dx+n       - sets delta position [mm]");
-  Serial.println("m          - motor moves to the next position");
-  Serial.println("setx+n     - sets new position [mm]");
-  Serial.println("off        - turns TB6600 off");
-  Serial.println("<void>     - EMERGENCY SWITCH");
+  Serial.println("pos          - prints actual position");
+  Serial.println("on           - turns TB6600 on");
+  Serial.println("x+n          - sets next move position [mm]");
+  Serial.println("dx+n         - sets delta position [mm]");
+  Serial.println("m            - motor moves to the next position");
+  Serial.println("setx+n       - sets new position [mm]");
+  Serial.println("off          - turns TB6600 off");
+  Serial.println("<void>       - EMERGENCY SWITCH");
   Serial.println("--------------------------------------------------------------------------------");
 }
+
 
 // pass id by reference to control command repeat etc
 void setPresetData(struct presetStruct* preset, byte& id) // *********************    setPresetData    
 {
   if (inputString == "end\n")
   { preset[id].tmLoops = 255; return; }
-  if (inputString.charAt(0) != 's') {Serial.print("Incorrect Command: "); Serial.println(inputString); return;} 
-  boolean isCommandCorrect = false; // is it necessary? check
+  if (inputString.charAt(0) != 's') {Serial.print("Incorrect Command: "); Serial.print(inputString); return;} 
   byte startID = 1;
   byte endID = 2;
   byte k; // iterator
@@ -622,30 +655,29 @@ void setPresetData(struct presetStruct* preset, byte& id) // *******************
   {
     if (inputString.charAt(k) == 'l')
     {
-      isCommandCorrect = true;
       endID = k;
       preset[id].tmStep = (inputString.substring(startID, endID)).toFloat();
       break;
     }
   }
-  if ((k == (inputLength - 1)) || !isCommandCorrect) {Serial.print("Incorrect Command: "); Serial.println(inputString); return;}
+  if (k >= (inputLength - 4)) {Serial.print("Incorrect Command: "); Serial.print(inputString); return;} // inputLength - 4 because we need l<number>t<number>, but k points to l
   startID = k+1;
   for(k = startID; k < inputLength; k++)
   {
     if (inputString.charAt(k) == 't')
     {
-      isCommandCorrect = true;
       endID = k;
       preset[id].tmLoops = (inputString.substring(startID, endID)).toFloat();
       break;
     }
   }
-  if ((k == (inputLength - 1)) || !isCommandCorrect) {Serial.print("Incorrect Command: "); Serial.println(inputString); return;}
+  if (k >= (inputLength - 2)) {Serial.print("Incorrect Command: "); Serial.print(inputString); return;}
   startID = k+1;
-  preset[id].tmTime = (int) (((inputString.substring(startID)).toFloat())*1000); // cast time in seconds to miliseconds
+  preset[id].tmTime = (int) ((inputString.substring(startID)).toFloat() * 1000.0); // cast time in seconds to miliseconds
   // increment command id:
   id++;
 }
+
 
 void tmPresetHelp(byte mode)  // ******************************************    tmPresetHelp
 {
@@ -659,20 +691,22 @@ void tmPresetHelp(byte mode)  // ******************************************    t
     case 1: // edit mode
         break;
   }
-  Serial.println("Command structure: s[float]l[byte]t[float]");
+  Serial.println("Command structure: s<step [mm]>l<loops>t<time [s]>");
   Serial.println("Finish command: end");
   Serial.println("--------------------------------------------------------------------------------");
 }
 
+
 void choosePreset()  // ***************************************************    choosePreset
 {
   cleaningService();
-  Serial.println("Choose preset [A/B/C]:");
+  Serial.print("Choose preset [A/B/C]: ");
   for(;;)
   {
     serialEvent();
     if(stringComplete)
     {
+      Serial.print(inputString);
       if (inputString == "A\n") {presetChoice = 'A'; break;}
       if (inputString == "B\n") {presetChoice = 'B'; break;}
       if (inputString == "C\n") {presetChoice = 'C'; break;}
@@ -683,6 +717,7 @@ void choosePreset()  // ***************************************************    c
   loopBreak: cleaningService();
   Serial.print("Preset "); Serial.print(presetChoice); Serial.println(" chosen");
 }
+
 
 // setPreset() writes user serial input into chosen preset
 void setPreset()  // ******************************************************    setPreset
@@ -713,27 +748,31 @@ void setPreset()  // ******************************************************    s
   Serial.println("--------------------------------------------------------------------------------");
 }
 
+
 void choosePresetEEPROM()  // *********************************************    choosePresetEEPROM
 {
   cleaningService();
+  Serial.print("Choose EEPROM preset [A/B/C]: ");
   for(;;)
   {
     serialEvent();
     if (stringComplete)
     {
+      Serial.print(inputString);
       if (inputString == "A\n") {presetChoiceEEPROM = 'A'; cleaningService(); break;}
       if (inputString == "B\n") {presetChoiceEEPROM = 'B'; cleaningService(); break;}
       if (inputString == "C\n") {presetChoiceEEPROM = 'C'; cleaningService(); break;}
-      if (inputString == "abort\n") {Serial.println("writing aborted");}
+      if (inputString == "abort\n") {Serial.println("Aborted"); return;}
       if (inputString != "") 
-      { Serial.println("Wrong Preset=" + inputString); }
+      { Serial.println("Wrong Preset"); }
       cleaningService(); // clear the string and reset stringComplete
     }
   }
-  cleaningService();
+  Serial.print("EEPROM preset "); Serial.print(presetChoiceEEPROM); Serial.println(" chosen");
 }
 
-void writePresetData(presetStruct* preset)  // ****************************    writePresetData
+
+void writePresetData(presetStruct (&preset)[16])  // **********************    writePresetData
 {
   switch(presetChoiceEEPROM) 
   {
@@ -744,11 +783,12 @@ void writePresetData(presetStruct* preset)  // ****************************    w
   Serial.println("Write to EEPROM completed");
 }
 
+
 void writePreset()  // ****************************************************    writePreset
 {
+  Serial.println("--------------------------------------------------------------------------------");
   choosePreset();
   Serial.println("To abort process execute: abort");
-  Serial.println("Select EEPROM preset (current preset will be written):");
   choosePresetEEPROM();
   switch (presetChoice) // execute writePresetData for appropriate preset; EEPROM preset is chosen inside writePresetData function
   {
@@ -756,10 +796,10 @@ void writePreset()  // ****************************************************    w
     case 'B': writePresetData(presetB); break;
     case 'C': writePresetData(presetC); break;
   }
-  Serial.println("Preset written");
+  Serial.println("--------------------------------------------------------------------------------");
 }
 
-void readPresetData(presetStruct* preset)  // *****************************    readPresetData
+void readPresetData(presetStruct (&preset)[16])  // ***********************    readPresetData
 {
   switch(presetChoiceEEPROM)
   {
@@ -773,7 +813,6 @@ void readPreset()  // *****************************************************    r
 {
   choosePreset();
   Serial.println("To abort process execute: abort");
-  Serial.println("Select EEPROM preset (will be written to current preset):");
   choosePresetEEPROM();
   switch (presetChoice)
   {
@@ -781,54 +820,59 @@ void readPreset()  // *****************************************************    r
     case 'B': readPresetData(presetB); break;
     case 'C': readPresetData(presetC); break;
   }
-  Serial.println("Preset ready");
+  Serial.println("--------------------------------------------------------------------------------");
 }
 
 void editPreset()  // *****************************************************    editPreset
 {
+  Serial.println("--------------------------------------------------------------------------------");
+  Serial.println("[abort] to stop editing");
   byte id;
   choosePreset();
   for(;;)
   {
-    Serial.println("Choose command id (0-15): [abort] to stop editing");
-    serialEvent();
-    if (stringComplete)
+    Serial.print("Choose command id (0-15): ");
+    while(!stringComplete)
+      serialEvent();
+    Serial.print(inputString);
+    if (inputString == "abort\n") { break; }
+    id = inputString.toInt();
+    cleaningService();
+    if(id >= 0 && id <= 15)
     {
-      if (inputString == "abort\n") { break; }
-      id = inputString.toInt();
-      if(id >= 0 && id <= 15)
-      {
-        Serial.println("Command:");
+      Serial.print("Command "); Serial.print(id); Serial.print(": ");
+      while(!stringComplete)
         serialEvent();
-        if (stringComplete)
-        {
-          switch (presetChoice)
-          {
-            case 'A': setPresetData(presetA, id); break;
-            case 'B': setPresetData(presetB, id); break;
-            case 'C': setPresetData(presetC, id); break;
-          }
-          if (inputString == "end\n") {break;} // wrong commands will be resolved in setPresetData function
-          cleaningService(); // clear the string and reset stringComplete
-          Serial.print("Command "); Serial.print(id); Serial.println(":");
-        }
-      }
+      Serial.print(inputString);
+      switch (presetChoice)
+      {
+         case 'A': setPresetData(presetA, id); break;
+         case 'B': setPresetData(presetB, id); break;
+         case 'C': setPresetData(presetC, id); break;
+       }
+       if (inputString == "end\n") {break;} // wrong commands will be resolved in setPresetData function
+       cleaningService(); // clear the string and reset stringComplete    
     }
   }
   Serial.println("Editing finished");
+  Serial.println("--------------------------------------------------------------------------------");
 }
+
 
 void printPresetData(presetStruct* preset, byte& id)  // ******************    printPresetData
 {
   if (preset[id].tmLoops == 255) {id = 16; return;}
-  Serial.print("Step: "); Serial.print(preset[id].tmStep); Serial.print(" mm, ");
+  Serial.print("Command: "); Serial.print(id);
+  Serial.print(", Step: "); Serial.print(preset[id].tmStep); Serial.print(" mm, ");
   Serial.print("Loops: "); Serial.print(preset[id].tmLoops); Serial.print(", ");
   Serial.print("Time: "); Serial.print((float)preset[id].tmTime/1000.0); Serial.println(" s");
   id++;
 }
 
+
 void printPreset()  // ****************************************************    printPreset
 {
+  Serial.println("--------------------------------------------------------------------------------");
   choosePreset();
   byte id = 0;
   for(;;)
@@ -842,7 +886,9 @@ void printPreset()  // ****************************************************    p
     if (id > 15) {break;}
   }
   Serial.println("End of preset");
+  Serial.println("--------------------------------------------------------------------------------");
 }
+
 
 // Setting variable so array does not to be accessed each time;
 void setTMVariables(const presetStruct* preset, const byte& id, float& varStep, byte& varLoops, unsigned int& varTime)
@@ -852,13 +898,15 @@ void setTMVariables(const presetStruct* preset, const byte& id, float& varStep, 
   varTime = preset[id].tmTime;
 }
 
+
 // function to execute commands stored in preset data
-void testModeExecute(const struct presetStruct* preset)  // ****************************    testModeExecute
+void testModeExecute(const struct presetStruct* preset)  // ***************    testModeExecute
 {
+  Serial.println("--------------------------------------------------------------------------------");
   ENAXON();
   byte id = 0, loopCount = 0;
   startTime = millis();
-  unsigned int deltaTime = millis();
+  unsigned long deltaTime = millis();
   printPosition();
   printHumAndTemp();
   float tmStep; byte tmLoops; unsigned int tmTime;
@@ -867,11 +915,9 @@ void testModeExecute(const struct presetStruct* preset)  // ********************
     // preparing data
     setTMVariables(preset, id, tmStep, tmLoops, tmTime);
     // wait for the appropriate time to start the command
-    for(;;)
-    {
+    while((millis() - deltaTime) < tmTime)
       if(emergencyStop()) {goto emergencyContinue;}
-      if((millis()-deltaTime) >= tmTime) {break;}
-    }
+      
     // check for end of preset flag
     if (tmLoops == 255) {break;}
     // set new position depending on definition type
@@ -900,11 +946,11 @@ void testModeExecute(const struct presetStruct* preset)  // ********************
     // check whether we would be outside of preset:
     if (id > 15) {break;}
     }
-emergencyContinue: ;
-// printPosition();
+emergencyContinue: printPosition();; 
 printHumAndTemp();
 ENAXOFF();
 Serial.println("Test finished");
+Serial.println("--------------------------------------------------------------------------------");
 }
 
 
@@ -922,15 +968,17 @@ void testMode()  // *******************************************************    t
     serialEvent();
     if (stringComplete)
     {
-      if (inputString == "testModeOff\n") {ENAXOFF(); Serial.println("Test Mode deactivated"); inputString = ""; break;}
-      if (inputString == "help\n") {tmHelp(); inputString = "";}
-      if (inputString == "setPreset\n") {setPreset(); inputString = "";}
-      if (inputString == "choosePreset\n") {choosePreset(); inputString = "";}
-      if (inputString == "writePreset\n") {writePreset(); inputString = "";}
-      if (inputString == "readPreset\n") {readPreset(); inputString = "";}
-      if (inputString == "editPreset\n") {editPreset(); inputString = "";}
-      if (inputString == "printPreset\n") {printPreset(); inputString = "";}
-      if (inputString == "start\n") {
+      if (inputString == "testModeOff\n") {ENAXOFF(); Serial.println("Test Mode deactivated"); 
+                                          Serial.println("--------------------------------------------------------------------------------"); 
+                                          inputString = ""; break;}
+      else if (inputString == "help\n") {tmHelp(); inputString = "";}
+      else if (inputString == "setPreset\n") {setPreset(); inputString = "";}
+      else if (inputString == "choosePreset\n") {choosePreset(); inputString = "";}
+      else if (inputString == "writePreset\n") {writePreset(); inputString = "";}
+      else if (inputString == "readPreset\n") {readPreset(); inputString = "";}
+      else if (inputString == "editPreset\n") {editPreset(); inputString = "";}
+      else if (inputString == "printPreset\n") {printPreset(); inputString = "";}
+      else if (inputString == "start\n") {
                                       switch (presetChoice)
                                       {
                                         case 'A': testModeExecute(presetA); break;
@@ -940,8 +988,16 @@ void testMode()  // *******************************************************    t
                                       }  
                                       inputString = "";
                                     }
+      else if (inputString == "pos\n")          {printPosition(); inputString = "";}
+      else if (inputString == "on\n")           {ENAXON();}
+      else if (inputString == "off\n")          {ENAXOFF();}
+      else if (inputString == "m\n")            {printPosition(); moveDef();}
+      else if (inputString.startsWith("setx"))  {setX(commandToFloat(inputString, 4)); inputString = "";}      
+      else if (inputString.startsWith("dx"))    {nextDx(commandToFloat(inputString, 2)); inputString = "";}
+      else if (inputString.charAt(0) == 'x')    {nextX(commandToFloat(inputString, 1)); inputString = "";}
+    
       if (inputString != "") 
-      { Serial.println("BAD COMMAND=" + inputString); }
+      { Serial.print("BAD COMMAND=" + inputString); }
       cleaningService(); // clear the string and reset stringComplete
     }
   }
@@ -953,38 +1009,38 @@ void loop()  // ***********************************************************    l
   if (stringComplete)
   {
     if (inputString == "w\n")            {autoMove(step, 1);}
-    if (inputString == "s\n")            {autoMove(step, 0);}
-    if (inputString == "autoOn\n")       {autoMode(true);}
-    if (inputString == "autoOff\n")      {autoMode(false);}
-    if (inputString == "help\n")         {help();}
-    if (inputString == "hello\n")        {hello();}
-    if (inputString == "on\n")           {ENAXON();}
-    if (inputString == "off\n")          {ENAXOFF();}
-    if (inputString == "cdon\n")         {comDataON();}
-    if (inputString == "cdoff\n")        {comDataOFF();}
-    if (inputString == "m\n")            {printPosition(); moveDef();}
-    if (inputString == "calibrate\n")    {calibration();}
-    if (inputString == "printc\n")       {Serial.print("c="); printFloat(c); Serial.println(); inputString="";}
-    if (inputString == "pos\n")          {printPosition(); inputString = "";}
-    if (inputString == "newPos\n")       {printNewPosition(); inputString = "";}
-    if (inputString == "start\n")        {
+    else if (inputString == "s\n")            {autoMove(step, 0);}
+    else if (inputString == "autoOn\n")       {autoMode(true);}
+    else if (inputString == "autoOff\n")      {autoMode(false);}
+    else if (inputString == "help\n")         {help();}
+    else if (inputString == "hello\n")        {hello();}
+    else if (inputString == "on\n")           {ENAXON();}
+    else if (inputString == "off\n")          {ENAXOFF();}
+    else if (inputString == "cdon\n")         {comDataON();}
+    else if (inputString == "cdoff\n")        {comDataOFF();}
+    else if (inputString == "m\n")            {printPosition(); moveDef();}
+    else if (inputString == "calibrate\n")    {calibration();}
+    else if (inputString == "printc\n")       {Serial.print("c="); printFloat(c); Serial.println(); inputString="";}
+    else if (inputString == "pos\n")          {printPosition(); inputString = "";}
+    else if (inputString == "newPos\n")       {printNewPosition(); inputString = "";}
+    else if (inputString == "start\n")        {
                                           Serial.println("--------------------------------------------------------------------------------");
                                           startTime = millis(); inputString = "";}
-    if (inputString == "testModeOn\n")   {testMode(); inputString = "";}
-    if (inputString == "t\n")            {printHumAndTemp();  inputString = "";}
-    if (inputString.startsWith("step"))  {setStep(commandToFloat(inputString, 4));}
-    if (inputString.startsWith("printc")){customPrintC(commandToInt(inputString, 6));}
-    if (inputString.startsWith("setxi")) {setXi(commandToInt(inputString, 5));}
-    if (inputString.startsWith("setx"))  {setX(commandToFloat(inputString, 4));}
-    if (inputString.startsWith("setc"))  {setC(commandToFloat(inputString, 4));}
-    if (inputString.startsWith("dxi"))   {nextDxi(commandToInt(inputString, 3));}
-    if (inputString.startsWith("dx"))    {nextDx(commandToFloat(inputString, 2));}
-    if (inputString.startsWith("xi"))    {nextXi(commandToInt(inputString, 2));}
-    if (inputString.charAt(0) == 's')    {MSpeed(commandToInt(inputString, 1));}
-    if (inputString.charAt(0) == 'x')    {nextX(commandToFloat(inputString, 1));}
+    else if (inputString == "testModeOn\n")   {testMode(); inputString = "";}
+    else if (inputString == "t\n")            {printHumAndTemp();  inputString = "";}
+    else if (inputString.startsWith("step"))  {setStep(commandToFloat(inputString, 4)); inputString = "";}
+    else if (inputString.startsWith("printc")){customPrintC(commandToInt(inputString, 6)); inputString = "";}
+    else if (inputString.startsWith("setxi")) {setXi(commandToInt(inputString, 5)); inputString = "";}
+    else if (inputString.startsWith("setx"))  {setX(commandToFloat(inputString, 4)); inputString = "";}
+    else if (inputString.startsWith("setc"))  {setC(commandToFloat(inputString, 4)); inputString = "";}
+    else if (inputString.startsWith("dxi"))   {nextDxi(commandToInt(inputString, 3)); inputString = "";}
+    else if (inputString.startsWith("dx"))    {nextDx(commandToFloat(inputString, 2)); inputString = "";}
+    else if (inputString.startsWith("xi"))    {nextXi(commandToInt(inputString, 2)); inputString = "";}
+    else if (inputString.charAt(0) == 's')    {MSpeed(commandToInt(inputString, 1)); inputString = "";}
+    else if (inputString.charAt(0) == 'x')    {nextX(commandToFloat(inputString, 1)); inputString = "";}
 
     if (inputString != "") 
-    { Serial.println("BAD COMMAND=" + inputString);    }
+    { Serial.print("BAD COMMAND=" + inputString);    }
     cleaningService(); // clear the string and reset stringComplete
   }
 }
